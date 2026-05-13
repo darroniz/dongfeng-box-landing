@@ -122,15 +122,17 @@
     };
   }
 
+  // text/plain (CORS-safe) evita el preflight que Zapier rechaza con application/json.
+  // Zapier interpreta el body como JSON igualmente.
   function sendToZapier(payload) {
     return fetch(ZAPIER_WEBHOOK, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
     })
       .then(r => r.json().catch(() => ({ status: r.ok ? 'success' : 'error' })))
       .then(res => { console.info('[Dongfeng] zapier ok:', res); return res; })
-      .catch(err => { console.error('[Dongfeng] zapier error:', err); throw err; });
+      .catch(err => { console.error('[Dongfeng] zapier error:', err); });
   }
 
   // Apps Script web app: usa text/plain para evitar el preflight CORS, el body sigue siendo JSON.
