@@ -36,7 +36,6 @@
     // reset views
     $$('.modal__body', modal).forEach(v => v.hidden = v.dataset.view !== 'form');
     $('#leadForm')?.reset();
-    $('#emailForm')?.reset();
     if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
   }
 
@@ -61,41 +60,121 @@
     }
   });
 
-  /* ----------  FORM SUBMIT (simulated)  ---------- */
+  /* ----------  FORM SUBMIT  ---------- */
+  const ZAPIER_WEBHOOK = 'https://hooks.zapier.com/hooks/catch/3397010/2nzkijc/';
+  const SHEET_WEBHOOK = 'https://script.google.com/macros/s/AKfycbyRGau3SQYnc4YEHuBRIOGoFpoH4WhT_VBUGOAO9Qj70HVX966LemFoh_ER-mfS9B6w/exec';
+
+  function splitName(fullName) {
+    const parts = (fullName || '').trim().split(/\s+/);
+    return { first: parts.shift() || '', last: parts.join(' ') };
+  }
+
+  // CP español → código de concesionario Salvador Caetano.
+  // Rangos específicos sobrescriben el default provincial (Sabadell dentro de 08, Majadahonda dentro de 28, Gandía dentro de 46).
+  function dealerCodeFromCP(cp) {
+    const digits = (cp || '').replace(/\D/g, '');
+    if (digits.length < 2) return '';
+    const n = parseInt(digits, 10);
+    if (n >= 8200 && n <= 8208) return 'DE00060002';   // Sabadell
+    if (n >= 28220 && n <= 28229) return 'DE05710004'; // Majadahonda
+    if (n >= 46700 && n <= 46729) return 'DE06350009'; // Gandía
+    const province = digits.slice(0, 2);
+    const provinceToDealer = {
+      '03': 'DE00110011', // Alicante
+      '07': 'DE00080001', // Palma de Mallorca
+      '08': 'DE05840006', // Barcelona
+      '15': 'DE00110012', // A Coruña
+      '17': 'DE00180001', // Girona
+      '19': 'DE00160001', // Guadalajara
+      '28': 'DE00050002', // Madrid
+      '29': 'DE01050013', // Málaga
+      '30': 'DE00070002', // Murcia
+      '31': 'DE00150001', // Navarra
+      '33': 'DE00110005', // Oviedo (Asturias)
+      '39': 'DE00070001', // Santander
+      '41': 'DE00110001', // Sevilla
+      '43': 'DE00140001', // Tarragona
+      '47': 'DE00090001', // Valladolid
+      '48': 'DE01100014', // Bilbao
+      '50': 'DE00100004'  // Zaragoza
+    };
+    return provinceToDealer[province] || '';
+  }
+
+  function buildPayload({ name, last_name, phone, cp, email, dealer }) {
+    return {
+      Name: name,
+      Last_Name: last_name,
+      Email: email || '',
+      Phone: phone,
+      Model_Code: '819',
+      Dealership_Code: dealer || '',
+      Postal_Code: cp || '',
+      Privacy_Policy: 'Y',
+      Consent: true,
+      Lead_Type: 'TP10',
+      Request_Type: 'TPD10',
+      Lead_Source: 'OL24',
+      Form_Type: 'F12',
+      Campaign_Code: 'CPH020',
+      Brand_Code: 'DON',
+      Country_Code: 'ES'
+    };
+  }
+
+  function sendToZapier(payload) {
+    return fetch(ZAPIER_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(r => r.json().catch(() => ({ status: r.ok ? 'success' : 'error' })))
+      .then(res => { console.info('[Dongfeng] zapier ok:', res); return res; })
+      .catch(err => { console.error('[Dongfeng] zapier error:', err); throw err; });
+  }
+
+  // Apps Script web app: usa text/plain para evitar el preflight CORS, el body sigue siendo JSON.
+  function sendToSheet(payload) {
+    if (!SHEET_WEBHOOK) return Promise.resolve(null);
+    return fetch(SHEET_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+      redirect: 'follow'
+    })
+      .then(r => r.text().then(t => { try { return JSON.parse(t); } catch { return { status: r.ok ? 'success' : 'error', raw: t }; } }))
+      .then(res => { console.info('[Dongfeng] sheet ok:', res); return res; })
+      .catch(err => { console.error('[Dongfeng] sheet error:', err); });
+  }
+
   const leadForm = $('#leadForm');
   if (leadForm) {
     leadForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(leadForm).entries());
-      console.info('[Dongfeng] lead submitted (simulated):', data);
+      const { first, last } = splitName(data.name);
+      const dealer = dealerCodeFromCP(data.cp);
 
-      // placeholder: dispatch dataLayer event for GA4/Google Ads conversion
+      const payload = buildPayload({
+        name: first,
+        last_name: last,
+        phone: data.phone || '',
+        cp: data.cp || '',
+        email: data.email || '',
+        dealer
+      });
+
+      sendToZapier(payload);
+      sendToSheet(payload);
+
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({
         event: 'generate_lead',
         form_name: 'test_drive',
-        lead_data: { name: data.name, phone_hash: hashShort(data.phone || '') }
+        lead_data: { name: data.name, phone_hash: hashShort(data.phone || ''), dealer }
       });
 
-      // swap to success view
       $$('.modal__body', modal).forEach(v => v.hidden = v.dataset.view !== 'success');
-      requestAnimationFrame(() => {
-        const emailInput = $('#emailForm input[type="email"]');
-        if (emailInput) emailInput.focus();
-      });
-    });
-  }
-
-  const emailForm = $('#emailForm');
-  if (emailForm) {
-    emailForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const email = new FormData(emailForm).get('email');
-      console.info('[Dongfeng] email capture (simulated):', email);
-      const btn = $('button', emailForm);
-      if (btn) { btn.textContent = '✓ Enviado'; btn.disabled = true; }
-      const input = $('input', emailForm);
-      if (input) input.disabled = true;
     });
   }
 
