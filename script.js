@@ -69,6 +69,16 @@
     return { first: parts.shift() || '', last: parts.join(' ') };
   }
 
+  // E.164 español. Enhanced Conversions exige prefijo internacional para hacer match.
+  function normalizePhoneES(raw) {
+    let p = (raw || '').replace(/[\s\-().]/g, '');
+    if (!p) return '';
+    if (p.startsWith('00')) p = '+' + p.slice(2);
+    if (p.startsWith('+')) return p;
+    if (/^[6789]\d{8}$/.test(p)) return '+34' + p;
+    return p;
+  }
+
   // CP español → código de concesionario Salvador Caetano.
   // Rangos específicos sobrescriben el default provincial (Sabadell dentro de 08, Majadahonda dentro de 28, Gandía dentro de 46).
   function dealerCodeFromCP(cp) {
@@ -169,22 +179,27 @@
       sendToZapier(payload);
       sendToSheet(payload);
 
+      // Enhanced Conversions: GTM hashea (SHA-256) los campos de enhanced_conversion_data
+      // antes de mandarlos a Google Ads. No hashear aquí.
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({
         event: 'generate_lead',
         form_name: 'test_drive',
-        lead_data: { name: data.name, phone_hash: hashShort(data.phone || ''), dealer }
+        dealer,
+        enhanced_conversion_data: {
+          email: data.email || '',
+          phone_number: normalizePhoneES(data.phone),
+          address: {
+            first_name: first,
+            last_name: last,
+            postal_code: data.cp || '',
+            country: 'ES'
+          }
+        }
       });
 
       $$('.modal__body', modal).forEach(v => v.hidden = v.dataset.view !== 'success');
     });
-  }
-
-  // non-cryptographic short hash for console logging placeholder
-  function hashShort(str) {
-    let h = 0;
-    for (let i = 0; i < str.length; i++) h = ((h << 5) - h) + str.charCodeAt(i) | 0;
-    return Math.abs(h).toString(16).slice(0, 8);
   }
 
   /* ----------  TOP BAR  ---------- */
