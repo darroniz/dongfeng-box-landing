@@ -1,8 +1,8 @@
 /* ============================================================
    Dongfeng BOX landing — interactions
    - Modal open/close (click, backdrop, Escape, focus trap)
-   - Form submit (simulated, logs to console + dataLayer)
-   - Success view with optional email capture
+   - Form submit: POST a Zapier + Apps Script (Sheet backup) + dataLayer
+   - Success view tras enviar el formulario
    - Sticky CTA mobile (visible after hero, hidden near final CTA)
    - Top bar dismiss
    - Reveal on scroll (respects prefers-reduced-motion)
