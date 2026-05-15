@@ -106,10 +106,16 @@
       '43': 'DE00140001', // Tarragona
       '47': 'DE00090001', // Valladolid
       '48': 'DE01100014', // Bilbao
-      '50': 'DE00100004'  // Zaragoza
+      '50': 'DE00100004', // Zaragoza
+      '35': 'DE00780003', // Las Palmas (Canarias)
+      '38': 'DE00090002'  // Santa Cruz de Tenerife (Canarias)
     };
     return provinceToDealer[province] || '';
   }
+
+  // 'CAN' si la landing setea window.LANDING_REGION o si el path empieza por /canarias; si no, 'PEN'.
+  const REGION = (typeof window !== 'undefined' && window.LANDING_REGION)
+    || (/^\/canarias(\/|$)/i.test(location.pathname) ? 'CAN' : 'PEN');
 
   function buildPayload({ name, last_name, phone, cp, email, dealer }) {
     return {
@@ -128,7 +134,8 @@
       Form_Type: 'F12',
       Campaign_Code: 'CPH020',
       Brand_Code: 'DON',
-      Country_Code: 'ES'
+      Country_Code: 'ES',
+      Region: REGION
     };
   }
 
