@@ -77,7 +77,7 @@
   // Puerta de entrada (Apps Script). Valida el lead y, solo si pasa el filtro
   // antibots, lo escribe en la Sheet y lo reenvía a Zapier (server-side).
   // La URL de Zapier YA NO vive aquí: está dentro del Apps Script, fuera de la página pública.
-  const GATEWAY_WEBHOOK = 'https://script.google.com/macros/s/AKfycbyRGau3SQYnc4YEHuBRIOGoFpoH4WhT_VBUGOAO9Qj70HVX966LemFoh_ER-mfS9B6w/exec';
+  const GATEWAY_WEBHOOK = 'https://script.google.com/macros/s/AKfycbzrS__THM2OPA35AQlrS5Hn3gObNEPRU_kiHQWAtGefzRJM5JzuDxK1e5lLGu4jPMHG/exec';
   // Token compartido con el Apps Script. Los hits directos de bots al endpoint no lo traen.
   const FORM_TOKEN = 'dfbox-a7f3k92mq';
 
