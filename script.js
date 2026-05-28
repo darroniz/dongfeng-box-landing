@@ -17,12 +17,23 @@
   /* ----------  MODAL  ---------- */
   const modal = $('#modal');
   const modalContent = $('.modal__content', modal);
+  const LEAD_SENT_KEY = 'dongfeng_lead_sent';
   let lastFocused = null;
+
+  function leadAlreadySent() {
+    try { return sessionStorage.getItem(LEAD_SENT_KEY) === '1'; }
+    catch { return false; }
+  }
+
+  function showView(viewName) {
+    $$('.modal__body', modal).forEach(v => v.hidden = v.dataset.view !== viewName);
+  }
 
   function openModal() {
     lastFocused = document.activeElement;
     modal.hidden = false;
     document.documentElement.style.overflow = 'hidden';
+    if (leadAlreadySent()) showView('success');
     // focus first interactive inside modal after paint
     requestAnimationFrame(() => {
       const firstInput = $('input, button', modal);
@@ -33,9 +44,11 @@
   function closeModal() {
     modal.hidden = true;
     document.documentElement.style.overflow = '';
-    // reset views
-    $$('.modal__body', modal).forEach(v => v.hidden = v.dataset.view !== 'form');
-    $('#leadForm')?.reset();
+    // Si ya envió, mantenemos la vista success; solo reseteamos si aún no ha enviado.
+    if (!leadAlreadySent()) {
+      showView('form');
+      $('#leadForm')?.reset();
+    }
     if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
   }
 
@@ -61,8 +74,12 @@
   });
 
   /* ----------  FORM SUBMIT  ---------- */
-  const ZAPIER_WEBHOOK = 'https://hooks.zapier.com/hooks/catch/3397010/2nzkijc/';
-  const SHEET_WEBHOOK = 'https://script.google.com/macros/s/AKfycbyRGau3SQYnc4YEHuBRIOGoFpoH4WhT_VBUGOAO9Qj70HVX966LemFoh_ER-mfS9B6w/exec';
+  // Puerta de entrada (Apps Script). Valida el lead y, solo si pasa el filtro
+  // antibots, lo escribe en la Sheet y lo reenvía a Zapier (server-side).
+  // La URL de Zapier YA NO vive aquí: está dentro del Apps Script, fuera de la página pública.
+  const GATEWAY_WEBHOOK = 'https://script.google.com/macros/s/AKfycbyRGau3SQYnc4YEHuBRIOGoFpoH4WhT_VBUGOAO9Qj70HVX966LemFoh_ER-mfS9B6w/exec';
+  // Token compartido con el Apps Script. Los hits directos de bots al endpoint no lo traen.
+  const FORM_TOKEN = 'dfbox-a7f3k92mq';
 
   function splitName(fullName) {
     const parts = (fullName || '').trim().split(/\s+/);
@@ -75,6 +92,8 @@
     if (!p) return '';
     if (p.startsWith('00')) p = '+' + p.slice(2);
     if (p.startsWith('+')) return p;
+    // Autofill suele dejar "34XXXXXXXXX" sin el "+": le anteponemos el "+".
+    if (/^34[6789]\d{8}$/.test(p)) return '+' + p;
     if (/^[6789]\d{8}$/.test(p)) return '+34' + p;
     return p;
   }
@@ -139,31 +158,19 @@
     };
   }
 
-  // text/plain (CORS-safe) evita el preflight que Zapier rechaza con application/json.
-  // Zapier interpreta el body como JSON igualmente.
-  function sendToZapier(payload) {
-    return fetch(ZAPIER_WEBHOOK, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
-    })
-      .then(r => r.json().catch(() => ({ status: r.ok ? 'success' : 'error' })))
-      .then(res => { console.info('[Dongfeng] zapier ok:', res); return res; })
-      .catch(err => { console.error('[Dongfeng] zapier error:', err); });
-  }
-
-  // Apps Script web app: usa text/plain para evitar el preflight CORS, el body sigue siendo JSON.
-  function sendToSheet(payload) {
-    if (!SHEET_WEBHOOK) return Promise.resolve(null);
-    return fetch(SHEET_WEBHOOK, {
+  // text/plain (CORS-safe) evita el preflight. El Apps Script recibe el lead,
+  // lo valida y solo si pasa el filtro lo escribe en la Sheet y lo reenvía a Zapier.
+  function sendToGateway(payload) {
+    if (!GATEWAY_WEBHOOK) return Promise.resolve(null);
+    return fetch(GATEWAY_WEBHOOK, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload),
       redirect: 'follow'
     })
       .then(r => r.text().then(t => { try { return JSON.parse(t); } catch { return { status: r.ok ? 'success' : 'error', raw: t }; } }))
-      .then(res => { console.info('[Dongfeng] sheet ok:', res); return res; })
-      .catch(err => { console.error('[Dongfeng] sheet error:', err); });
+      .then(res => { console.info('[Dongfeng] gateway ok:', res); return res; })
+      .catch(err => { console.error('[Dongfeng] gateway error:', err); });
   }
 
   const leadForm = $('#leadForm');
@@ -172,19 +179,23 @@
       e.preventDefault();
       const data = Object.fromEntries(new FormData(leadForm).entries());
       const { first, last } = splitName(data.name);
-      const dealer = dealerCodeFromCP(data.cp);
+      const phone = normalizePhoneES(data.phone);
+      const cp = (data.cp || '').replace(/\D/g, '');
+      const dealer = dealerCodeFromCP(cp);
 
       const payload = buildPayload({
         name: first,
         last_name: last,
-        phone: data.phone || '',
-        cp: data.cp || '',
+        phone,
+        cp,
         email: data.email || '',
         dealer
       });
+      // Antibots: token compartido + honeypot. El Apps Script descarta lo que no cuadre.
+      payload._t = FORM_TOKEN;
+      payload._hp = data.fax || '';
 
-      sendToZapier(payload);
-      sendToSheet(payload);
+      sendToGateway(payload);
 
       // Enhanced Conversions: GTM hashea (SHA-256) los campos de enhanced_conversion_data
       // antes de mandarlos a Google Ads. No hashear aquí.
@@ -195,17 +206,18 @@
         dealer,
         enhanced_conversion_data: {
           email: data.email || '',
-          phone_number: normalizePhoneES(data.phone),
+          phone_number: phone,
           address: {
             first_name: first,
             last_name: last,
-            postal_code: data.cp || '',
+            postal_code: cp,
             country: 'ES'
           }
         }
       });
 
-      $$('.modal__body', modal).forEach(v => v.hidden = v.dataset.view !== 'success');
+      try { sessionStorage.setItem(LEAD_SENT_KEY, '1'); } catch {}
+      showView('success');
     });
   }
 
