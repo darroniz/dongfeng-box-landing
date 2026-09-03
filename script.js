@@ -98,7 +98,7 @@
     return p;
   }
 
-  // CP español → código de concesionario Salvador Caetano.
+  // CP español → código de concesionario oficial.
   // Rangos específicos sobrescriben el default provincial (Sabadell dentro de 08, Majadahonda dentro de 28, Gandía dentro de 46).
   function dealerCodeFromCP(cp) {
     const digits = (cp || '').replace(/\D/g, '');
