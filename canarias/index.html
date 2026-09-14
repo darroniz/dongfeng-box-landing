@@ -1,16 +1,14 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <!-- Google Tag Manager -->
-  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-  })(window,document,'script','dataLayer','GTM-P5RVP4GS');</script>
-  <!-- End Google Tag Manager -->
+  <!-- Cookies / consentimiento — CMP de Dongfeng (Rigor CG, token propio de BOX).
+       Pinta el banner, fija Consent Mode y carga GTM-P5RVP4GS él mismo.
+       No añadir el snippet de GTM a mano: lo inyecta este script. -->
+  <script src="https://cookies.rigorcg.pt/script/?token=yREvAlGiFoIMswtOsaYSB3fy"></script>
 
-  <!-- Google tag (gtag.js) — GA4 propio (cuenta PARETO-EXPERTIA) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-F07MZGYNKE"></script>
+  <!-- GA4 propio (cuenta PARETO-EXPERTIA) — gtag.js bloqueado hasta aceptar: el CMP reactiva
+       los <script type="text/plain" data-type="..."> de la categoría aceptada. No quitar el type. -->
+  <script type="text/plain" data-type="rgcPerformance" src="https://www.googletagmanager.com/gtag/js?id=G-F07MZGYNKE"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
@@ -31,11 +29,6 @@
   <link rel="stylesheet" href="../styles.css">
 </head>
 <body>
-  <!-- Google Tag Manager (noscript) -->
-  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-P5RVP4GS"
-  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-  <!-- End Google Tag Manager (noscript) -->
-
   <!-- 0. TOP BAR -->
   <div class="topbar" id="topbar">
     <p class="topbar__text">
@@ -455,7 +448,7 @@
   <footer class="site-footer">
     <div class="container site-footer__inner">
       <p class="site-footer__legal">
-        © 2026 Dongfeng Auto España · Red oficial de concesionarios · <a href="#">Política de privacidad</a> · <a href="#">Cookies</a> · <a href="#">Aviso legal</a>
+        © 2026 Dongfeng Auto España · Red oficial de concesionarios · <a href="https://formulario.dongfeng-auto.es/politica-privacidad" target="_blank" rel="noopener">Política de privacidad</a> · <a href="#" class="js-rgc-open-cookies-settings">Cookies</a> · <a href="#">Aviso legal</a>
       </p>
       <p class="site-footer__finance">Precio orientativo para Canarias con IGIC general del 7% (en sustitución del IVA peninsular del 21%). Precio al contado 21.099,77&nbsp;€ (IGIC incluido). Cuota desde 151&nbsp;€/mes con financiación Santander Consumer Finance, sujeta a estudio y aprobación. Condiciones de financiación y precio final pueden variar; consulta en tu concesionario oficial Dongfeng en Tenerife o Las Palmas.</p>
     </div>
