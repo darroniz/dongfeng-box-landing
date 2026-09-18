@@ -194,7 +194,7 @@
       });
       // Antibots: token compartido + honeypot. El Apps Script descarta lo que no cuadre.
       payload._t = FORM_TOKEN;
-      payload._hp = data.fax || '';
+      payload._hp = data.hp_ref || '';   // campo trampa: nombre que el autocompletado no reconoce (antes «fax», que se rellenaba con el teléfono)
 
       sendToGateway(payload);
 
